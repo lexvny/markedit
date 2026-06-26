@@ -393,9 +393,6 @@ function renderBlock(block) {
     case 'table':
       return renderTable(block);
 
-    case 'table':
-        return (block.lines || []).join('\n');
-
       case 'divider':
       return '<hr class="block-divider">';
 
@@ -448,7 +445,6 @@ function refreshDisplay() {
 function enterEdit(el, i) {
   activeIdx = i;
   el.classList.add('edit');
-  el.dataset.rendered = el.innerHTML;
 
   const block = blocks[i];
   const ta = document.createElement('textarea');
@@ -506,9 +502,21 @@ function handleEditKeydown(e, i) {
       exitEdit(i);
       insertBlock(i, 'paragraph');
       refreshDisplay();
+      // Find the newly inserted empty paragraph block
       const newIdx = i + 1;
-      const newEl = container.querySelector(`[data-block-index="${newIdx}"]`);
-      if (newEl) enterEdit(newEl, newIdx);
+      let newEl = container.querySelector(`[data-block-index="${newIdx}"]`);
+      if (!newEl || !newEl.classList.contains('block-paragraph')) {
+        // If index shifted, find by looking for an empty paragraph block after i
+        const allBlocks = container.querySelectorAll('.block-wrapper');
+        for (let j = newIdx; j < allBlocks.length; j++) {
+          if (allBlocks[j].querySelector('.block-textarea') ||
+              allBlocks[j].innerHTML.trim() === '') {
+            newEl = allBlocks[j];
+            break;
+          }
+        }
+      }
+      if (newEl) enterEdit(newEl, parseInt(newEl.dataset.blockIndex));
     }
   }
 }
@@ -537,8 +545,8 @@ function rebuildDoc() {
         return (block.lines || []).map(l => '> ' + l).join('\n');
       case 'list':
         return (block.lines || []).join('\n');
-      case 'divider':
-        return '---';
+      case 'table':
+        return (block.lines || []).join('\n');
       case 'paragraph':
       default:
         return block.content;
