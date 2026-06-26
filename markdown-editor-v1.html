@@ -196,33 +196,34 @@ let activeIdx = null;
 let container = null;
 
 // ===== 初始 Markdown 示例 =====
-const DEFAULT_MD = `# 欢迎使用 MarkEdit
-
-这是一个 **Typora 风格**的 Markdown 编辑器。
-
-> 点击任意块即可编辑其 Markdown 源码。
-
-- 按 **Enter**（光标在末尾）创建新段落
-- 按 **Esc** 退出编辑
-- 点击其他块自动保存当前块
-
----
-
-## 关于 MarkEdit
-
-单文件 HTML，零外部依赖，所有内容内联。
-
-1. 编辑渲染一体化
-2. 块级源显切换
-3. 纯前端实现
-
-```
-MarkEdit v1.0
-Typora-like Block Editor
-```
-
-是不是很简单？`;
-
+const DEFAULT_MD = [
+  '# 欢迎使用 MarkEdit',
+  '',
+  '这是一个 **Typora 风格**的 Markdown 编辑器。',
+  '',
+  '> 点击任意块即可编辑其 Markdown 源码。',
+  '',
+  '- 按 **Enter**（光标在末尾）创建新段落',
+  '- 按 **Esc** 退出编辑',
+  '- 点击其他块自动保存当前块',
+  '',
+  '---',
+  '',
+  '## 关于 MarkEdit',
+  '',
+  '单文件 HTML，零外部依赖，所有内容内联。',
+  '',
+  '1. 编辑渲染一体化',
+  '2. 块级源显切换',
+  '3. 纯前端实现',
+  '',
+  '```',
+  'MarkEdit v1.0',
+  'Typora-like Block Editor',
+  '```',
+  '',
+  '是不是很简单？'
+].join('\n');
 function init(containerEl) {
   container = containerEl;
   const raw = containerEl.textContent.trim() || DEFAULT_MD;
