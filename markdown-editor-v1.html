@@ -83,6 +83,21 @@ code {
 }
 
 /* 分割线 */
+.block-table {
+  margin: 0.5em 0;
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.95em;
+}
+.block-table td {
+  border: 1px solid #d0d0d8;
+  padding: 0.4em 0.6em;
+  text-align: left;
+}
+.block-table tr:nth-child(even) {
+  background: #f9f9fb;
+}
+
 .block-divider {
   margin: 1.5em 0;
   border: none;
@@ -339,10 +354,18 @@ function renderInline(text) {
 
 // ===== 渲染层 =====
 
+function renderTable(block) {
+  const rows = block.lines.map(line => {
+    const cells = line.split('|').filter(c => c.trim()).map(c => c.trim());
+    return '<tr>' + cells.map(c => '<td>' + renderInline(c) + '</td>').join('') + '</tr>';
+  }).join('\n');
+  return '<table class="block-table"><tbody>' + rows + '</tbody></table>';
+}
+
 function renderBlock(block) {
   switch (block.type) {
     case 'heading':
-      return `<${block.level} class="block-heading-${block.level}">${renderInline(block.content)}</${block.level}>`;
+      return `<h${block.level} class="block-heading-${block.level}">${renderInline(block.content)}</h${block.level}>`;
 
     case 'paragraph':
       return marked.parse(block.content);
@@ -367,7 +390,13 @@ function renderBlock(block) {
     case 'code':
       return `<pre class="block-code"><code>${escapeHtml(block.content)}</code></pre>`;
 
-    case 'divider':
+    case 'table':
+      return renderTable(block);
+
+    case 'table':
+        return (block.lines || []).join('\n');
+
+      case 'divider':
       return '<hr class="block-divider">';
 
     default:
@@ -392,6 +421,7 @@ function createBlockEl(block, i) {
   wrapper.innerHTML = renderBlock(block);
 
   wrapper.addEventListener('click', (e) => {
+    if (e.target.closest('.block-textarea')) return;
     if (activeIdx === i) return;
     if (activeIdx !== null) exitEdit(activeIdx);
     enterEdit(wrapper, i);
@@ -434,9 +464,9 @@ function enterEdit(el, i) {
 
   // blur: 延迟, 避免点击切换时先blur导致重复操作
   ta.addEventListener('blur', () => {
-    setTimeout(() => {
+    requestAnimationFrame(() => {
       if (activeIdx === i) exitEdit(i);
-    }, 150);
+    });
   });
 
   autoResize(ta);
