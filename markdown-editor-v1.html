@@ -449,7 +449,11 @@ function enterEdit(el, i) {
   const block = blocks[i];
   const ta = document.createElement('textarea');
   ta.className = 'block-textarea';
-  ta.value = block.content || '';
+  if (block.type === 'heading') {
+    ta.value = '#'.repeat(block.level || 1) + ' ' + (block.content || '');
+  } else {
+    ta.value = block.content || '';
+  }
   ta.rows = Math.max((block.lines || []).length, 1);
   el.innerHTML = '';
   el.appendChild(ta);
@@ -482,7 +486,23 @@ function exitEdit(i) {
   if (!ta) return;
 
   const newText = ta.value;
-  updateBlock(i, newText);
+  
+  // Always re-parse the textarea content to catch heading level changes,
+  // inline type changes, or multi-line splittings
+  const newBlocks = parseBlocks(newText);
+  
+  if (newBlocks.length === 0) {
+    // Empty input — clear the block
+    blocks[i].content = '';
+    blocks[i].lines = [];
+  } else if (newBlocks.length === 1) {
+    // Single block — replace in place
+    blocks[i] = newBlocks[0];
+  } else {
+    // Multiple blocks — splice
+    blocks.splice(i, 1, ...newBlocks);
+  }
+  
   activeIdx = null;
   refreshDisplay();
 }
@@ -494,45 +514,47 @@ function handleEditKeydown(e, i) {
     return;
   }
 
-  if (e.key === 'Enter' && !e.ctrlKey && !e.shiftKey) {
-    const ta = e.target;
-    const isAtEnd = ta.selectionStart === ta.value.length && ta.selectionEnd === ta.value.length;
-    if (isAtEnd && ta.value.length > 0) {
-      e.preventDefault();
-      exitEdit(i);
-      insertBlock(i, 'paragraph');
-      refreshDisplay();
-      // Find the newly inserted empty paragraph block
-      const newIdx = i + 1;
-      let newEl = container.querySelector(`[data-block-index="${newIdx}"]`);
-      if (!newEl || !newEl.classList.contains('block-paragraph')) {
-        // If index shifted, find by looking for an empty paragraph block after i
-        const allBlocks = container.querySelectorAll('.block-wrapper');
-        for (let j = newIdx; j < allBlocks.length; j++) {
-          if (allBlocks[j].querySelector('.block-textarea') ||
-              allBlocks[j].innerHTML.trim() === '') {
-            newEl = allBlocks[j];
-            break;
-          }
-        }
+  const ta = e.target;
+
+  // Empty block: Enter creates new paragraph (same as Ctrl+Enter)
+  if (e.key === 'Enter' && !e.ctrlKey && !e.shiftKey && ta.value.trim() === '') {
+    e.preventDefault();
+    finishBlockAndCreateNext(i);
+    return;
+  }
+
+  // Ctrl+Enter or Cmd+Enter: finish this block, create new paragraph
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+    finishBlockAndCreateNext(i);
+    return;
+  }
+
+  // Plain Enter: always allow default newline inside textarea
+  // (no interception needed, falls through to default behavior)
+}
+
+function finishBlockAndCreateNext(i) {
+  exitEdit(i);
+  insertBlock(i, 'paragraph');
+  refreshDisplay();
+  const newIdx = i + 1;
+  let newEl = container.querySelector(`[data-block-index="${newIdx}"]`);
+  if (!newEl || !newEl.classList.contains('block-paragraph')) {
+    const allBlocks = container.querySelectorAll('.block-wrapper');
+    for (let j = newIdx; j < allBlocks.length; j++) {
+      if (allBlocks[j].querySelector('.block-textarea') ||
+          allBlocks[j].innerHTML.trim() === '') {
+        newEl = allBlocks[j];
+        break;
       }
-      if (newEl) enterEdit(newEl, parseInt(newEl.dataset.blockIndex));
     }
   }
+  if (newEl) enterEdit(newEl, parseInt(newEl.dataset.blockIndex));
 }
-
 // ===== 数据层 =====
 
-function updateBlock(i, text) {
-  if (text.includes('\n')) {
-    // 多行文本: 需要重新解析成多个块
-    const newBlocks = parseBlocks(text);
-    blocks.splice(i, 1, ...newBlocks);
-  } else {
-    blocks[i].content = text;
-    blocks[i].lines = text ? [text] : [];
-  }
-}
+
 
 function rebuildDoc() {
   return blocks.map(block => {
